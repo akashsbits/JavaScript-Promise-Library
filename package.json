@@ -1,0 +1,11 @@
+{
+  "name": "javascript-promise-library",
+  "version": "1.0.0",
+  "description": "",
+  "main": "JSPromise.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Akash Srivastava",
+  "license": "ISC"
+}
