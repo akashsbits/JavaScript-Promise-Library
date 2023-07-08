@@ -22,40 +22,100 @@ class JSPromise {
   }
 
   #runCallbacks() {
-    if (this.state === STATE.FULFILLED) {
+    if (this.#state === STATE.FULFILLED) {
       this.#thenCallbacks.forEach((cb) => cb(this.#value));
       this.#thenCallbacks = [];
     }
 
-    if (this.state === STATE.REJECTED) {
+    if (this.#state === STATE.REJECTED) {
       this.#catchCallbacks.forEach((cb) => cb(this.#value));
       this.#catchCallbacks = [];
     }
   }
 
   #success(value) {
-    if (this.#state !== STATE.PENDING) return;
+    queueMicrotask(() => {
+      if (this.#state !== STATE.PENDING) return;
 
-    this.#state = STATE.FULFILLED;
-    this.#value = value;
+      // Check if the value is a promise object
+      if (value instanceof JSPromise) {
+        value.then(this.#__success, this.#__fail);
+        return;
+      }
+
+      this.#state = STATE.FULFILLED;
+      this.#value = value;
+      this.#runCallbacks();
+    });
   }
 
   #fail(value) {
-    if (this.#state !== STATE.PENDING) return;
+    queueMicrotask(() => {
+      if (this.#state !== STATE.PENDING) return;
 
-    this.#state = STATE.REJECTED;
-    this.#value = value;
+      // Check if the value is a promise object
+      if (value instanceof JSPromise) {
+        value.then(this.#__success, this.#__fail);
+        return;
+      }
+
+      this.#state = STATE.REJECTED;
+      this.#value = value;
+      this.#runCallbacks();
+    });
   }
 
   then(successCb, failCb) {
-    if (successCb != null) this.#thenCallbacks.push(cb);
+    // Return promise for promise chaining
+    return new JSPromise((resolve, reject) => {
+      this.#thenCallbacks.push((result) => {
+        if (successCb == null) {
+          resolve(result);
+          return;
+        }
 
-    if (failCb != null) this.#catchCallbacks.push(cb);
+        try {
+          resolve(successCb(result));
+        } catch (error) {
+          reject(error);
+        }
+      });
 
-    this.#runCallbacks();
+      this.#catchCallbacks.push((result) => {
+        if (failCb == null) {
+          reject(result);
+          return;
+        }
+
+        try {
+          resolve(failCb(result));
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      this.#runCallbacks();
+    });
   }
 
   catch(cb) {
     return this.then(undefined, cb);
   }
+
+  finally(cb) {
+    return this.then(
+      (result) => {
+        // Not passing result because finally don't receive result
+        cb();
+        // returning result so that any further promise can use it
+        return result;
+      },
+      (result) => {
+        cb();
+        throw result;
+      }
+    );
+  }
 }
+
+module.exports = JSPromise;
