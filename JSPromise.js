@@ -59,6 +59,10 @@ class JSPromise {
         return;
       }
 
+      if (this.#catchCallbacks.length === 0) {
+        throw new UncaughtPromiseError(value);
+      }
+
       this.#state = STATE.REJECTED;
       this.#value = value;
       this.#runCallbacks();
@@ -115,6 +119,15 @@ class JSPromise {
         throw result;
       }
     );
+  }
+}
+
+// Uncaught exceptions
+class UncaughtPromiseError extends Error {
+  constructor(error) {
+    super(error);
+
+    this.stack = `(in promise) ${error.stack}`;
   }
 }
 
